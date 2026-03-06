@@ -1,0 +1,32 @@
+post_install() {
+  if ! getent group plugdev >/dev/null 2>&1; then
+    groupadd plugdev
+    echo ">>> Created 'plugdev' group."
+  fi
+  udevadm control --reload-rules 2>/dev/null || true
+  udevadm trigger 2>/dev/null || true
+
+  echo ""
+  echo ">>> Coral Edge TPU installed."
+  echo ">>>"
+  echo ">>> IMPORTANT: To use the Coral USB Accelerator without root,"
+  echo ">>> your user must be in the 'plugdev' group:"
+  echo ">>>"
+  echo ">>>   sudo usermod -aG plugdev \$USER"
+  echo ">>>"
+  echo ">>> Then log out and back in (or reboot)."
+  echo ">>>"
+  echo ">>> Default library is throttled (safer thermals)."
+  echo ">>> To switch to max performance:"
+  echo ">>>   sudo ln -sf libedgetpu-direct.so.1 /usr/lib/libedgetpu.so.1"
+  echo ""
+}
+
+post_upgrade() {
+  post_install
+}
+
+post_remove() {
+  udevadm control --reload-rules 2>/dev/null || true
+  udevadm trigger 2>/dev/null || true
+}

@@ -23,6 +23,8 @@
 #ifndef DARWINN_PORT_DEFAULT_INTEGRAL_TYPES_H_
 #define DARWINN_PORT_DEFAULT_INTEGRAL_TYPES_H_
 
+#include <cstdint>
+
 namespace platforms {
 namespace darwinn {
 

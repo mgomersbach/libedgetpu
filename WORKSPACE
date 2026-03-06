@@ -101,5 +101,9 @@ tf_workspace1()
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 tf_workspace0()
 
-load("@coral_crosstool//:configure.bzl", "cc_crosstool")
+local_repository(
+    name = "local_crosstool",
+    path = "crosstool",
+)
+load("@local_crosstool//:configure.bzl", "cc_crosstool")
 cc_crosstool(name = "crosstool", cpp_version = "c++17")
