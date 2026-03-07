@@ -18,79 +18,56 @@ libedgetpu_dependencies()
 
 # ==================================================================
 
-# We must initialize hermetic python first.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
-    urls = [
-        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
-    ],
-)
+# rules_shell is required before tf_workspace3 for TF 2.21+
+load("@org_tensorflow//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
 
-http_archive(
-    name = "rules_python",
-    sha256 = "9d04041ac92a0985e344235f5d946f71ac543f1b1565f2cdbc9a2aaee8adf55b",
-    strip_prefix = "rules_python-0.26.0",
-    url = "https://github.com/bazelbuild/rules_python/releases/download/0.26.0/rules_python-0.26.0.tar.gz",
-)
-
-load("@rules_python//python:repositories.bzl", "py_repositories")
-
-py_repositories()
-
-load("@rules_python//python:repositories.bzl", "python_register_toolchains")
-load(
-    "@org_tensorflow//tensorflow/tools/toolchains/python:python_repo.bzl",
-    "python_repository",
-)
-
-python_repository(name = "python_version_repo")
-
-load("@python_version_repo//:py_version.bzl", "HERMETIC_PYTHON_VERSION")
-
-python_register_toolchains(
-    name = "python",
-    ignore_root_user_error = True,
-    python_version = HERMETIC_PYTHON_VERSION,
-)
-
-load("@python//:defs.bzl", "interpreter")
-load("@rules_python//python:pip.bzl", "package_annotation", "pip_parse")
-
-NUMPY_ANNOTATIONS = {
-    "numpy": package_annotation(
-        additive_build_content = """\
-filegroup(
-    name = "includes",
-    srcs = glob(["site-packages/numpy/core/include/**/*.h"]),
-)
-cc_library(
-    name = "numpy_headers",
-    hdrs = [":includes"],
-    strip_include_prefix="site-packages/numpy/core/include/",
-)
-""",
+tf_http_archive(
+    name = "rules_shell",
+    sha256 = "bc61ef94facc78e20a645726f64756e5e285a045037c7a61f65af2941f4c25e1",
+    strip_prefix = "rules_shell-0.4.1",
+    urls = tf_mirror_urls(
+        "https://github.com/bazelbuild/rules_shell/releases/download/v0.4.1/rules_shell-v0.4.1.tar.gz",
     ),
-}
-
-pip_parse(
-    name = "pypi",
-    annotations = NUMPY_ANNOTATIONS,
-    python_interpreter_target = interpreter,
-    requirements = "@org_tensorflow//:requirements_lock_" + HERMETIC_PYTHON_VERSION.replace(".", "_") + ".txt",
 )
-
-load("@pypi//:requirements.bzl", "install_deps")
-
-install_deps()
 
 # ==================================================================
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 tf_workspace3()
+
+load("@rules_shell//shell:repositories.bzl", "rules_shell_dependencies", "rules_shell_toolchains")
+rules_shell_dependencies()
+rules_shell_toolchains()
+
+# ==================================================================
+
+# Initialize hermetic Python (TF 2.21+ pattern via @xla)
+load("@xla//third_party/py:python_init_rules.bzl", "python_init_rules")
+python_init_rules()
+
+load("@xla//third_party/py:python_init_repositories.bzl", "python_init_repositories")
+python_init_repositories(
+    default_python_version = "system",
+    requirements = {
+        "3.10": "@org_tensorflow//:requirements_lock_3_10.txt",
+        "3.11": "@org_tensorflow//:requirements_lock_3_11.txt",
+        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
+        "3.13": "@org_tensorflow//:requirements_lock_3_13.txt",
+    },
+)
+
+load("@xla//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
+python_init_toolchains()
+
+load("@xla//third_party/py:python_init_pip.bzl", "python_init_pip")
+python_init_pip()
+
+load("@pypi//:requirements.bzl", "install_deps")
+install_deps()
+
+# ==================================================================
 
 load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
 tf_workspace2()
@@ -100,6 +77,24 @@ tf_workspace1()
 
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 tf_workspace0()
+
+# ==================================================================
+
+# GPU stub repositories — TF unconditionally loads these but libedgetpu
+# doesn't need GPU acceleration.
+local_repository(
+    name = "gpu_stub",
+    path = "gpu_stub",
+)
+load("@gpu_stub//:configure.bzl", "gpu_stub_repository")
+gpu_stub_repository(name = "local_config_cuda", kind = "cuda")
+gpu_stub_repository(name = "local_config_rocm", kind = "rocm")
+gpu_stub_repository(name = "local_config_tensorrt", kind = "tensorrt")
+gpu_stub_repository(name = "local_config_nccl", kind = "nccl")
+gpu_stub_repository(name = "tf_wheel_version_suffix", kind = "wheel_suffix")
+gpu_stub_repository(name = "rules_ml_toolchain", kind = "rules_ml_toolchain")
+
+# ==================================================================
 
 local_repository(
     name = "local_crosstool",

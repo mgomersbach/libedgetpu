@@ -1,4 +1,4 @@
-# Maintainer: dbrain <your-email@example.com>
+# Maintainer: Daniel Brain <me@danielbrain.com>
 pkgname=libedgetpu-git
 pkgver=r63.e35aed1
 pkgrel=1
@@ -22,6 +22,9 @@ pkgver() {
 build() {
   cd "${pkgname}"
   make libedgetpu
+
+  # Build diagnostic tool (standalone, no Bazel needed)
+  gcc -O2 -Wall -o edgetpu-check tools/edgetpu-check.c -ldl
 }
 
 package() {
@@ -42,6 +45,9 @@ package() {
   # Public headers
   install -Dm644 "tflite/public/edgetpu.h" "${pkgdir}/usr/include/edgetpu.h"
   install -Dm644 "tflite/public/edgetpu_c.h" "${pkgdir}/usr/include/edgetpu_c.h"
+
+  # Diagnostic tool
+  install -Dm755 "edgetpu-check" "${pkgdir}/usr/bin/edgetpu-check"
 
   # udev rules (allows non-root access to Coral USB devices)
   install -Dm644 "debian/edgetpu-accelerator.rules" \

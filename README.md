@@ -1,118 +1,129 @@
 # Edge TPU runtime library (libedgetpu)
 
-This repo contains the source code for the userspace
-level runtime driver for [Coral devices](https://coral.ai/products).
-This software is distributed in the binary form at [coral.ai/software](https://coral.ai/software/).
+Community-maintained fork of the userspace runtime driver for
+[Coral Edge TPU](https://coral.ai/products) devices (USB Accelerator and PCIe).
+
+The upstream repo ([google-coral/libedgetpu](https://github.com/google-coral/libedgetpu))
+has been archived. This fork keeps the library building against modern toolchains
+and TensorFlow releases.
+
+## Current versions
+
+| Component | Version |
+|-----------|---------|
+| TensorFlow | 2.21.0 |
+| Bazel | 7.7.0 |
+| GCC | 15+ supported |
+
+## Quick start (Arch Linux)
+
+Install from AUR or build locally:
+
+```
+makepkg -si
+```
+
+Or build manually:
+
+```
+make libedgetpu
+sudo cp out/direct/k8/libedgetpu.so.1.0 /usr/lib/
+sudo ln -sf libedgetpu.so.1.0 /usr/lib/libedgetpu.so.1
+sudo ln -sf libedgetpu.so.1 /usr/lib/libedgetpu.so
+sudo cp debian/edgetpu-accelerator.rules /etc/udev/rules.d/99-edgetpu-accelerator.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
 
 ## Building
 
-There are three ways to build libedgetpu:
+### Prerequisites
 
-* Docker + Bazel: Compatible with Linux, MacOS and Windows (via Dockerfile.windows and build.bat), this method ensures a known-good build enviroment and pulls all external depedencies needed.
-* Bazel: Supports Linux, macOS, and Windows (via build.bat). A proper enviroment setup is required before using this technique.
-* Makefile: Supporting only Linux and Native builds, this strategy is pure Makefile and doesn't require Bazel or external dependencies to be pulled at runtime.
+- [Bazelisk](https://github.com/bazelbuild/bazelisk) (or Bazel 7.7.0)
+- libusb 1.0
+- GCC (tested with 15.x; older versions should also work)
+- Python 3 (build-time only, for Bazel's hermetic toolchain)
 
-### Bazel + Docker [Recommended]
+The `.bazelversion` file ensures bazelisk downloads the correct Bazel version automatically.
 
-For Debian/Ubuntu, install the following libraries:
+### Native build (Linux)
+
 ```
-$ sudo apt install docker.io devscripts
+make libedgetpu
 ```
 
-Build Linux binaries inside Docker container (works on Linux and macOS):
+This builds both `direct` (max performance) and `throttled` (reduced clock, safer thermals)
+variants into `out/direct/k8/` and `out/throttled/k8/`.
+
+### Cross-compile
+
+```
+CPU=aarch64 make
+CPU=armv7a make
+```
+
+### Docker build
+
 ```
 DOCKER_CPUS="k8" DOCKER_IMAGE="ubuntu:22.04" DOCKER_TARGETS=libedgetpu make docker-build
 DOCKER_CPUS="armv7a aarch64" DOCKER_IMAGE="debian:bookworm" DOCKER_TARGETS=libedgetpu make docker-build
 ```
 
-All built binaries go to the `out` directory. Note that the bazel-* are not copied to the host from the Docker container.
+### Debian package
 
-To package a Debian deb for `arm64`,`armhf`,`amd64` respectively:
-```
-debuild -us -uc -tc -b -a arm64 -d
-debuild -us -uc -tc -b -a armhf -d
-debuild -us -uc -tc -b -a amd64 -d
-```
-
-### Bazel
-The version of `bazel` needs to be the same as that recommended for the corresponding version of tensorflow. For example, it requires `Bazel 6.5.0` to compile TF 2.16.1.
-
-Current version of tensorflow supported is `2.16.1`.
-
-Build native binaries on Linux and macOS:
-```
-$ make
-```
-
-Required libraries for Linux:
-
-```
-$ sudo apt install python3-dev
-```
-
-Build native binaries on Windows:
-```
-$ build.bat
-```
-
-Cross-compile for ARMv7-A (32 bit), and ARMv8-A (64 bit) on Linux:
-```
-$ CPU=armv7a make
-$ CPU=aarch64 make
-```
-
-To package a Debian deb:
 ```
 debuild -us -uc -tc -b
 ```
-NOTE for MacOS: Compilation with MacOS fails. Two requirements:
-- install `flatbuffers` (via macports)
-- after failure in compilation, add the following line to the temporary file that is created by bazel in `/var/tmp/_bazl_xxxxx/xxxxxxxxxxxxx/external/local_config_cc/BUILD` line 48:
-```
-"darwin_x86_64": ":cc-compiler-darwin",
-```
-Repeat compilation.
 
-### Makefile
+## Verifying your device
 
-If only building for native systems, it is possible to significantly reduce the complexity of the build by removing Bazel (and Docker). This simple approach builds only what is needed, removes build-time depenency fetching, increases the speed, and uses upstream Debian packages.
+After installing, check that your Edge TPU is detected:
 
-To prepare your system, you'll need the following packages (both available on Debian Bookworm, Bullseye or Buster-Backports):
 ```
-sudo apt install libabsl-dev libflatbuffers-dev
+edgetpu-check
 ```
 
-Next, you'll need to clone the [Tensorflow Repo](https://github.com/tensorflow/tensorflow) at the desired checkout (using TF head isn't advised). If you are planning to use libcoral or pycoral libraries, this should match the ones in those repos' WORKSPACE files. For example, if you are using TF2.15, we can check that [tag in the TF Repo](https://github.com/tensorflow/tensorflow/tree/r2.15) get the latest commit for that stable release and then checkout that address:
+To also test the USB connection by uploading firmware (catches bad cables):
+
 ```
-git clone https://github.com/tensorflow/tensorflow
-git checkout v2.16.1
+edgetpu-check --test
 ```
 
-To build the library:
+## Device setup
+
+### udev rules (Linux)
+
+The Coral USB Accelerator needs udev rules for non-root access:
+
 ```
-TFROOT=<Directory of Tensorflow> make -f makefile_build/Makefile -j$(nproc) libedgetpu
+sudo cp debian/edgetpu-accelerator.rules /etc/udev/rules.d/99-edgetpu-accelerator.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-## Support
+The rules use the `plugdev` group. Create it and add your user:
 
-If you have question, comments or requests concerning this library, please
-reach out to coral-support@google.com.
+```
+sudo groupadd plugdev
+sudo usermod -aG plugdev $USER
+```
+
+Then log out and back in.
+
+### Direct vs throttled
+
+- **Throttled** (default, recommended): reduced clock speed, safer thermals
+- **Direct**: maximum performance, device may get hot under sustained load
+
+**Warning:** The Edge TPU can get very hot during operation. The Coral USB
+Accelerator is designed to safely operate at the following temperatures:
+
+- **Direct (max frequency):** ambient temperatures up to 25°C
+- **Throttled (reduced frequency):** ambient temperatures up to 35°C
+
+Touching the device during or immediately after operation at high temperatures
+may cause burns. The USB Accelerator does not include built-in thermal
+management — use the throttled variant unless you need peak throughput and have
+adequate cooling (e.g. a heatsink or active airflow).
 
 ## License
 
 [Apache License 2.0](LICENSE)
-
-## Warning
-
-If you're using the Coral USB Accelerator, it may heat up during operation, depending
-on the computation workloads and operating frequency. Touching the metal part of the USB
-Accelerator after it has been operating for an extended period of time may lead to discomfort
-and/or skin burns. As such, if you enable the Edge TPU runtime using the maximum operating
-frequency, the USB Accelerator should be operated at an ambient temperature of 25°C or less.
-Alternatively, if you enable the Edge TPU runtime using the reduced operating frequency, then
-the device is intended to safely operate at an ambient temperature of 35°C or less.
-
-Google does not accept any responsibility for any loss or damage if the device
-is operated outside of the recommended ambient temperature range.
-
-Note: This issue affects only USB-based Coral devices, and is irrelevant for PCIe devices.

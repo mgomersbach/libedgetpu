@@ -1,3 +1,13 @@
+libedgetpu (16.0tf2.21.0-1) stable; urgency=medium
+
+  * Build against TF v2.21.0 / Bazel 7.7.0
+  * Fix GCC 15 compatibility (missing <cstdint> includes)
+  * Auto-detect GCC include paths (Arch Linux and other non-Debian distros)
+  * Add GPU stub repos to avoid CUDA/ROCm build dependencies
+  * Add PKGBUILD for Arch Linux / AUR
+
+ -- Daniel Brain <me@danielbrain.com>  Fri, 07 Mar 2025 11:00:00 +1100
+
 libedgetpu (16.0tf2.16.1-1) stable; urgency=medium
   * Build against TF v2.16.1
 -- Nicola Ferralis < feranick@hotmail.com> Thu, 07 Mar 2024 14:01:34 -0500
