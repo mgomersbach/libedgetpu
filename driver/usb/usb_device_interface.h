@@ -19,6 +19,7 @@
 #include "port/integral_types.h"
 #include "port/status.h"
 #include "port/statusor.h"
+#include <cstdint>
 
 namespace platforms {
 namespace darwinn {

@@ -21,6 +21,7 @@
 #include "driver/dma_chunker.h"
 #include "driver/dma_info.h"
 #include "driver/usb/usb_ml_commands.h"
+#include <cstdint>
 
 namespace platforms {
 namespace darwinn {

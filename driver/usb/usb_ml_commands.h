@@ -17,6 +17,7 @@
 
 #include "driver/usb/usb_device_interface.h"
 #include "driver/usb/usb_standard_commands.h"
+#include <cstdint>
 
 namespace platforms {
 namespace darwinn {
