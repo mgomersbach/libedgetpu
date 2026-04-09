@@ -106,5 +106,21 @@ tf_workspace1()
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 tf_workspace0()
 
+# ==================================================================
+
+# GPU stub repositories — TF unconditionally loads these but libedgetpu
+# doesn't need GPU acceleration.
+local_repository(
+    name = "gpu_stub",
+    path = "gpu_stub",
+)
+load("@gpu_stub//:configure.bzl", "gpu_stub_repository")
+gpu_stub_repository(name = "local_config_cuda", kind = "cuda")
+gpu_stub_repository(name = "local_config_rocm", kind = "rocm")
+gpu_stub_repository(name = "local_config_tensorrt", kind = "tensorrt")
+gpu_stub_repository(name = "local_config_nccl", kind = "nccl")
+gpu_stub_repository(name = "tf_wheel_version_suffix", kind = "wheel_suffix")
+gpu_stub_repository(name = "rules_ml_toolchain", kind = "rules_ml_toolchain")
+
 load("@coral_crosstool//:configure.bzl", "cc_crosstool")
 cc_crosstool(name = "crosstool", cpp_version = "c++17")

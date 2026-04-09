@@ -1,4 +1,5 @@
 common --experimental_repo_remote_exec
+common --repo_env=HERMETIC_PYTHON_VERSION=3.13
 
 build --define darwinn_portable=1
 build --subcommands
@@ -11,7 +12,3 @@ build:linux --cxxopt=-std=c++17
 
 build:macos --cxxopt=-std=c++17
 build:macos --copt=-fvisibility=hidden
-
-build:windows --incompatible_restrict_string_escapes=false
-build:windows --copt=/DWIN32_LEAN_AND_MEAN
-build:windows --cxxopt=/std:c++17

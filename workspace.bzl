@@ -5,6 +5,7 @@ This module contains workspace definitions for building and using libedgetpu.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
+<<<<<<< HEAD
 # TF release 2.5.0 as of 05/17/2021.
 #TENSORFLOW_COMMIT = "a4dfb8d1a71385bd6d122e4f27f86dcebb96712d"
 #TENSORFLOW_SHA256 = "cb99f136dc5c89143669888a44bfdd134c086e1e2d9e36278c1eb0f03fe62d76"
@@ -87,19 +88,19 @@ TENSORFLOW_SHA256 = "b4cbd03710db2f05a0f4f5f238c496f39e6be34bab1a168e5c0ade1b23d
 # Crosstool release as of 02/28/2023
 CORAL_CROSSTOOL_COMMIT = "8e885509123395299bed6a5f9529fdc1b9751599"
 CORAL_CROSSTOOL_SHA256 = "f86d488ca353c5ee99187579fe408adb73e9f2bb1d69c6e3a42ffb904ce3ba01"
+=======
+TENSORFLOW_COMMIT = "a481b10260dfdf833a1b16007eead49c1d7febf3"
+TENSORFLOW_SHA256 = "6438396f3b19af5d7ad787cf041f857af7505916dc08092e20b07d1b1f8df492"
+>>>>>>> dbrain/master
 
 def libedgetpu_dependencies(
         tensorflow_commit = TENSORFLOW_COMMIT,
-        tensorflow_sha256 = TENSORFLOW_SHA256,
-        coral_crosstool_commit = CORAL_CROSSTOOL_COMMIT,
-        coral_crosstool_sha256 = CORAL_CROSSTOOL_SHA256):
+        tensorflow_sha256 = TENSORFLOW_SHA256):
     """Sets up libedgetpu dependencies.
 
     Args:
       tensorflow_commit: https://github.com/tensorflow/tensorflow commit ID
       tensorflow_sha256: corresponding sha256 of the source archive
-      coral_crosstool_commit: https://github.com/google-coral/crosstool commit ID
-      coral_crosstool_sha256: corresponding sha256 of the source archive
     """
     maybe(
         http_archive,
@@ -114,27 +115,14 @@ def libedgetpu_dependencies(
     )
 
     maybe(
-        http_archive,
-        name = "coral_crosstool",
-        urls = [
-            "https://github.com/google-coral/crosstool/archive/" + coral_crosstool_commit + ".tar.gz",
-        ],
-        sha256 = coral_crosstool_sha256,
-        strip_prefix = "crosstool-" + coral_crosstool_commit,
-    )
-
-    maybe(
         libusb_repository,
         name = "libusb",
     )
 
-    # Use bazel to query values defined here, e.g.:
-    #     bazel query "@libedgetpu_properties//..." | grep tensorflow_commit | cut -d\# -f2
     _properties_repository(
         name = "libedgetpu_properties",
         properties = {
             "tensorflow_commit": tensorflow_commit,
-            "coral_crosstool_commit": coral_crosstool_commit,
         },
     )
 
@@ -174,22 +162,6 @@ def _libusb_impl(ctx):
 cc_library(
   name = "headers",
   linkopts = ["-l:libusb-1.0.so"],
-  visibility = ["//visibility:public"],
-)
-"""
-    elif lower_name.startswith("windows"):
-        path = str(ctx.path(Label("@//:WORKSPACE"))) + "/../../libusb"
-        build_file_content = """
-cc_library(
-  name = "headers",
-  includes = ["root/include"],
-  hdrs = ["root/include/libusb-1.0/libusb.h"],
-  visibility = ["//visibility:public"],
-)
-cc_import(
-  name = "shared",
-  interface_library = "root/VS2019/MS64/dll/libusb-1.0.lib",
-  shared_library = "root/VS2019/MS64/dll/libusb-1.0.dll",
   visibility = ["//visibility:public"],
 )
 """
