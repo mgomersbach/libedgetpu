@@ -156,12 +156,16 @@ LIBEDGETPU_STD_CCSRCS := \
 	$(BUILDROOT)/tflite/edgetpu_manager_direct.cc
 LIBEDGETPU_STD_CCOBJS := $(call TOBUILDDIR,$(patsubst %.cc,%-throttled.o,$(LIBEDGETPU_STD_CCSRCS)))
 
-.PHONY: libedgetpu
+.PHONY: libedgetpu libedgetpu-throttled relax-flatbuffers
 
 all: libedgetpu libedgetpu-throttled
 
 clean:
 	rm -rf $(BUILDDIR)
+
+relax-flatbuffers:
+	@test -n "$(TFROOT)" || (echo "TFROOT is required" >&2; exit 1)
+	@$(BUILDROOT)/makefile_build/relax_flatbuffers_asserts.sh "$(TFROOT)"
 
 $(LIBEDGETPU_FLATC_OBJS) : $(BUILDDIR)/%_generated.h: %.fbs
 	@$(MKDIR)
@@ -196,13 +200,13 @@ $(LIBEDGETPU_STD_CCOBJS) : $(BUILDDIR)/%-throttled.o: %.cc
 	@echo "Compiling $<"
 	@$(CXX) -DTHROTTLE_EDGE_TPU $(LIBEDGETPU_CXXFLAGS) $(LIBEDGETPU_INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@
 
-libedgetpu: | firmware $(LIBEDGETPU_FLATC_OBJS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_MAX_CCOBJS)
+libedgetpu: | relax-flatbuffers firmware $(LIBEDGETPU_FLATC_OBJS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_MAX_CCOBJS)
 	@mkdir -p $(BUILDDIR)/direct/k8
 	@echo "Building libedgetpu.so"
 	@$(CXX) $(LIBEDGETPU_CCFLAGS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_MAX_CCOBJS) $(LIBEDGETPU_LDFLAGS) ${LDFLAGS} -o $(BUILDDIR)/direct/k8/libedgetpu.so.1.0
 	@ln -sf $(BUILDDIR)/direct/k8/libedgetpu.so.1.0 $(BUILDDIR)/direct/k8/libedgetpu.so.1
 
-libedgetpu-throttled: | firmware $(LIBEDGETPU_FLATC_OBJS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_STD_CCOBJS)
+libedgetpu-throttled: | relax-flatbuffers firmware $(LIBEDGETPU_FLATC_OBJS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_STD_CCOBJS)
 	@mkdir -p $(BUILDDIR)/throttled/k8
 	@echo "Building throttled libedgetpu.so"
 	@$(CXX) $(LIBEDGETPU_CCFLAGS) $(LIBEDGETPU_CCOBJS) $(LIBEDGETPU_STD_CCOBJS) $(LIBEDGETPU_LDFLAGS) ${LDFLAGS} -o $(BUILDDIR)/throttled/k8/libedgetpu.so.1.0
